@@ -1,0 +1,99 @@
+import mcpi.minecraft as minecraft
+import mcpi.block as block
+import random
+import time
+
+mc = minecraft.Minecraft.create()
+
+
+# ==============================
+# НАСТРОЙКИ
+# ==============================
+
+STEP_DISTANCE = 3       # на сколько блоков вперёд спавнить следующий
+BLOCK_MATERIAL = block.GLASS.id   # материал блоков (стекло — красиво)
+BLOCK_BELOW = block.STONE.id      # блок под ногами
+
+game_active = False
+path = []               # список координат блоков пути
+last_pos = None
+
+
+# ==============================
+# ВСПОМОГАТЕЛЬНЫЕ
+# ==============================
+
+def clear_path():
+    """Удаляет все блоки пути"""
+    for (x, y, z) in path:
+        mc.setBlock(x, y, z, block.AIR.id)
+    path.clear()
+
+
+def get_direction(pos, last_pos):
+    """Определяет направление движения игрока (dx, dz)"""
+    if last_pos is None:
+        return (1, 0)  # по умолчанию на восток
+    
+    dx = pos.x - last_pos.x
+    dz = pos.z - last_pos.z
+    
+    # Определяем основное направление
+    if abs(dx) > abs(dz):
+        # Движение по X
+        if dx > 0:
+            return (1, 0)   # восток
+        else:
+            return (-1, 0)  # запад
+    else:
+        # Движение по Z
+        if dz > 0:
+            return (0, 1)   # юг
+        else:
+            return (0, -1)  # север
+
+
+def spawn_next_block(x, y, z, material=BLOCK_MATERIAL):
+    """Ставит блок и добавляет его в путь"""
+    mc.setBlock(x, y, z, material)
+    path.append((x, y, z))
+
+
+def remove_old_block():
+    """Удаляет самый старый блок пути"""
+    if len(path) > 3:  # оставляем последние 3 блока
+        old = path.pop(0)
+        mc.setBlock(old[0], old[1], old[2], block.AIR.id)
+
+
+# ==============================
+# СТАРТ ИГРЫ
+# ==============================
+
+def start_game():
+    global game_active, path, last_pos
+    
+    # Очищаем старый путь
+    clear_path()
+    
+    game_active = True
+    last_pos = None
+    
+    pos = mc.player.getTilePos()
+    
+    # Ставим стартовую площадку под игроком
+    mc.setBlock(pos.x, pos.y - 1, pos.z, BLOCK_BELOW)
+    path.append((pos.x, pos.y - 1, pos.z))
+    
+    # Ставим первый блок впереди (направление — куда смотрит игрок)
+    # По умолчанию — на восток
+    first_x = pos.x + STEP_DISTANCE
+    first_z = pos.z
+    
+    mc.setBlock(first_x, pos.y - 1, first_z, BLOCK_MATERIAL)
+    path.append((first_x, pos.y - 1, first_z))
+    
+    # Ещё один дальше (запасной)
+    second_x = pos.x + STEP_DISTANCE * 2
+    mc.setBlock(second_x, pos.y - 1, first_z, BLOCK_MATERIAL)
+    path.append((second_x, pos.y - 1, first_z))
